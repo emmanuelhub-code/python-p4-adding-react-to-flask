@@ -1,73 +1,30 @@
-from flask import Flask, request, make_response, jsonify
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_migrate import Migrate
-
-from models import db, Message
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
-
 CORS(app)
-migrate = Migrate(app, db)
 
-db.init_app(app)
+# In-memory storage for simplicity
+messages = [
+    {"id": 1, "username": "Alice", "body": "Hello world!"},
+    {"id": 2, "username": "Bob", "body": "Hi there!"}
+]
 
-@app.route('/messages', methods=['GET', 'POST'])
-def messages():
-    if request.method == 'GET':
-        messages = Message.query.order_by('created_at').all()
+@app.route("/messages", methods=["GET"])
+def get_messages():
+    return jsonify(messages)
 
-        response = make_response(
-            jsonify([message.to_dict() for message in messages]),
-            200,
-        )
-    
-    elif request.method == 'POST':
-        data = request.get_json()
-        message = Message(
-            body=data['body'],
-            username=data['username']
-        )
-
-        db.session.add(message)
-        db.session.commit()
-
-        response = make_response(
-            jsonify(message.to_dict()),
-            201,
-        )
-
-    return response
-
-@app.route('/messages/<int:id>', methods=['PATCH', 'DELETE'])
-def messages_by_id(id):
-    message = Message.query.filter_by(id=id).first()
-
-    if request.method == 'PATCH':
-        data = request.get_json()
-        for attr in data:
-            setattr(message, attr, data[attr])
-            
-        db.session.add(message)
-        db.session.commit()
-
-        response = make_response(
-            jsonify(message.to_dict()),
-            200,
-        )
-
-    elif request.method == 'DELETE':
-        db.session.delete(message)
-        db.session.commit()
-
-        response = make_response(
-            jsonify({'deleted': True}),
-            200,
-        )
-
-    return response
+@app.route("/messages", methods=["POST"])
+def create_message():
+    data = request.get_json()
+    new_id = max(m["id"] for m in messages) + 1 if messages else 1
+    new_message = {
+        "id": new_id,
+        "username": data["username"],
+        "body": data["body"]
+    }
+    messages.append(new_message)
+    return jsonify(new_message), 201
 
 if __name__ == "__main__":
-    app.run(port=5555)
+    app.run(port=5555, debug=True)

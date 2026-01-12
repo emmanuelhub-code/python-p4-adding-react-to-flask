@@ -1,58 +1,52 @@
-import React, { useEffect, useState } from "react";
-import Header from "./Header";
-import Search from "./Search";
-import MessageList from "./MessageList";
-import NewMessage from "./NewMessage";
-
-const testUser = { username: "Duane" };
+import React, { useState, useEffect } from "react";
 
 function App() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [messages, setMessages] = useState([]);
-  const [search, setSearch] = useState("");
+  const [body, setBody] = useState("");
+  const currentUser = { username: "Charlie" };
 
+  // Fetch messages on first render
   useEffect(() => {
     fetch("http://127.0.0.1:5555/messages")
       .then((r) => r.json())
-      .then((messages) => setMessages(messages));
+      .then(setMessages);
   }, []);
 
-  function handleAddMessage(newMessage) {
-    setMessages([...messages, newMessage]);
+  // Handle form submission
+  function handleSubmit(e) {
+    e.preventDefault();
+    fetch("http://127.0.0.1:5555/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: currentUser.username, body }),
+    })
+      .then((r) => r.json())
+      .then((newMessage) => {
+        setMessages([...messages, newMessage]);
+        setBody("");
+      });
   }
-
-  function handleDeleteMessage(id) {
-    const updatedMessages = messages.filter((message) => message.id !== id);
-    setMessages(updatedMessages);
-  }
-
-  function handleUpdateMessage(updatedMessageObj) {
-    const updatedMessages = messages.map((message) => {
-      if (message.id === updatedMessageObj.id) {
-        return updatedMessageObj;
-      } else {
-        return message;
-      }
-    });
-    setMessages(updatedMessages);
-  }
-
-  const displayedMessages = messages.filter((message) =>
-    message.body.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
-    <main className={isDarkMode ? "dark-mode" : ""}>
-      <Header isDarkMode={isDarkMode} onToggleDarkMode={setIsDarkMode} />
-      <Search search={search} onSearchChange={setSearch} />
-      <MessageList
-        messages={displayedMessages}
-        currentUser={testUser}
-        onMessageDelete={handleDeleteMessage}
-        onUpdateMessage={handleUpdateMessage}
-      />
-      <NewMessage currentUser={testUser} onAddMessage={handleAddMessage} />
-    </main>
+    <div>
+      <h1>Chatterbox</h1>
+      <ul>
+        {messages.map((msg) => (
+          <li key={msg.id}>
+            <b>{msg.username}:</b> {msg.body}
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Type a message..."
+        />
+        <button type="submit">Send</button>
+      </form>
+    </div>
   );
 }
 
